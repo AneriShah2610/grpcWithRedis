@@ -15,42 +15,59 @@ const (
 	defaultName = "Aneri Shah"
 )
 
+var grpcClient helloWorld.GreeterClient
+
 func main() {
 	// create new redis client connection
-	client := newClient()
+	redisClient := newRedisClient()
 
-	// get value
-	err := hGetValue(client)
+	// grpc connection
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
-		//connect grpc server
-		conn, err := grpc.Dial(address, grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("GRPC connection error: %v", err)
-		}
-		defer conn.Close()
+		log.Fatalf("Error to connect grpc server")
+		return
+	}
+	defer conn.Close()
 
-		c := helloWorld.NewGreeterClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
 
+	grpcClient = helloWorld.NewGreeterClient(conn)
+	// set connection instance
+	redisGRPCInstance := NewRedisGRPC(redisClient, grpcClient, ctx)
+	err = redisGRPCInstance.getDataFromRedis()
+	if err != nil {
 		name := defaultName
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		r, err := c.SayHello(ctx, &helloWorld.HelloRequest{Name: name})
-		if err != nil {
-			log.Fatalf("Error to get value from grpc %v", err)
-			return
-		}
-		log.Printf("Greeting from client: %v", r.Name)
+		redisGRPCInstance.getDataFromGRPC(name)
 	}
 }
 
-func newClient() *redis.Client {
+func newRedisClient() *redis.Client {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "",
 		DB:       0,
 	})
 	return client
+}
+
+type RedisGRPCInterface interface {
+	getDataFromRedis() error
+	getDataFromGRPC(name string)
+}
+
+type RedisGRPCStruct struct {
+	RedisClient *redis.Client
+	GrpcClient  helloWorld.GreeterClient
+	Ctx         context.Context
+}
+
+func NewRedisGRPC(redisClient *redis.Client, grpcClient helloWorld.GreeterClient, ctx context.Context) RedisGRPCInterface {
+	return &RedisGRPCStruct{
+		RedisClient: redisClient,
+		GrpcClient:  grpcClient,
+		Ctx:         ctx,
+	}
 }
 
 type User struct {
@@ -80,4 +97,17 @@ func hGetValue(client *redis.Client) error {
 	}
 	fmt.Printf("%v \n", user)
 	return nil
+}
+
+func (rgi *RedisGRPCStruct) getDataFromRedis() error {
+	return hGetValue(rgi.RedisClient)
+}
+
+func (rgi *RedisGRPCStruct) getDataFromGRPC(name string) {
+	r, err := rgi.GrpcClient.SayHello(rgi.Ctx, &helloWorld.HelloRequest{Name: name})
+	if err != nil {
+		log.Fatalf("Error to get value from grpc %v", err)
+		return
+	}
+	log.Printf("Greeting from client: %v", r.Name)
 }
