@@ -38,17 +38,13 @@ type User struct {
 }
 
 func hSetValue(client *redis.Client) error {
-	user := User{
-		ID:       "123456789",
-		UserName: "AneriShah",
-		Email:    "anerishah36@gmail.com",
-		MobileNo: "0123456789",
-	}
-
-	userMap := structs.Map(user)
-	err := client.HMSet("userSampleKey:"+user.UserName, userMap).Err()
-	if err != nil {
-		return err
+	user := []User{{ID: "123456789", UserName: "AneriShah", Email: "anerishah36@gmail.com", MobileNo: "0123456789"}, {ID: "2345678901", UserName: "AbcXyz", Email: "abc.xyz@gmail.com", MobileNo: "1234567890"}}
+	for _, i := range user {
+		userMap := structs.Map(i)
+		err := client.HMSet("userSampleKey:"+i.UserName, userMap).Err()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

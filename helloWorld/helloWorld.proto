@@ -4,9 +4,11 @@ package helloWorld;
 service Greeter {
     rpc sayHello (HelloRequest) returns (HelloResponse) {}
 }
+
 message HelloRequest {
-    string name = 1;
+    string userName = 1;
 }
+
 message HelloResponse {
-    string name = 2;
+    string userName = 1;
 }

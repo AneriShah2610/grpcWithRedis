@@ -22,15 +22,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error to listen %v", err)
 	}
+	fmt.Println("Listen on server", port)
 	server := grpc.NewServer()
 	helloWorld.RegisterGreeterServer(server, &GRPCServer{})
 	if err = server.Serve(listen); err != nil {
 		log.Fatalf("Failed to sreve %v", err)
 	}
-	fmt.Println("Listen on server", port)
 }
 
 func (s *GRPCServer) SayHello(ctx context.Context, in *helloWorld.HelloRequest) (*helloWorld.HelloResponse, error) {
-	log.Printf("Received: %v", in.Name)
-	return &helloWorld.HelloResponse{Name: in.Name}, nil
+	log.Printf("Received: %v", in.UserName)
+	return &helloWorld.HelloResponse{UserName: in.UserName}, nil
 }
